@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, History, GitCommit } from 'lucide-react';
 import { RichOutputView } from './RichOutputView';
+import { VirtuosoRichOutputViewWithSearch } from './VirtuosoRichOutputViewWithSearch';
 import { PromptNavigation } from '../PromptNavigation';
 import { CommitsPanel } from '../CommitsPanel';
 import { cn } from '../../utils/cn';
@@ -38,6 +39,9 @@ export const RichOutputWithSidebar: React.FC<RichOutputWithSidebarProps> = ({
     return (stored as SidebarTab) || 'prompts';
   });
   
+  // Check if should use Virtuoso (default: true for performance)
+  const useVirtuoso = localStorage.getItem('useVirtuosoRichOutput') !== 'false';
+  
   const richOutputRef = useRef<{ scrollToPrompt: (promptIndex: number) => void }>(null);
 
   // Save collapsed state to localStorage when it changes
@@ -63,12 +67,21 @@ export const RichOutputWithSidebar: React.FC<RichOutputWithSidebarProps> = ({
     <div className="flex h-full relative">
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
-        <RichOutputView
-          ref={richOutputRef}
-          sessionId={sessionId}
-          sessionStatus={sessionStatus}
-          settings={settings}
-        />
+        {useVirtuoso ? (
+          <VirtuosoRichOutputViewWithSearch
+            ref={richOutputRef}
+            sessionId={sessionId}
+            sessionStatus={sessionStatus}
+            settings={settings}
+          />
+        ) : (
+          <RichOutputView
+            ref={richOutputRef}
+            sessionId={sessionId}
+            sessionStatus={sessionStatus}
+            settings={settings}
+          />
+        )}
       </div>
 
       {/* Toggle Button */}

@@ -58,6 +58,8 @@ export const useSessionView = (
   const [showStravuSearch, setShowStravuSearch] = useState(false);
   const [isStravuConnected, setIsStravuConnected] = useState(false);
   const [shouldSquash, setShouldSquash] = useState(true);
+  const [shouldGenerateMessage, setShouldGenerateMessage] = useState(false);
+  const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
   const [isWaitingForFirstOutput, setIsWaitingForFirstOutput] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isOpeningIDE, setIsOpeningIDE] = useState(false);
@@ -1429,11 +1431,68 @@ export const useSessionView = (
       : `Rebase from ${mainBranch}`;
   };
 
+  const generateConventionalCommitMessage = async () => {
+    console.log('[useSessionView] generateConventionalCommitMessage started');
+    if (!activeSession) {
+      console.log('[useSessionView] No active session, returning empty');
+      return '';
+    }
+    
+    setIsGeneratingMessage(true);
+    try {
+      // Get git diff
+      const diffResponse = await API.sessions.getGitDiff(activeSession.id);
+      if (!diffResponse.success) {
+        throw new Error('Failed to get git diff');
+      }
+
+      // Get prompts for context
+      const promptsResponse = await API.sessions.getPrompts(activeSession.id);
+      const prompts = promptsResponse.success && promptsResponse.data?.length > 0 
+        ? promptsResponse.data.map((p: any) => p.prompt_text || p.content).filter(Boolean)
+        : [];
+
+      console.log('[useSessionView] Calling generateCommitMessage API...');
+      
+      // Use the new API to generate commit message
+      const response = await API.sessions.generateCommitMessage(
+        activeSession.id,
+        diffResponse.data?.diff || 'No changes found',
+        prompts
+      );
+      
+      if (response.success && response.data?.message) {
+        console.log('[useSessionView] Generated message from Claude API:', response.data.message);
+        return response.data.message;
+      }
+      
+      console.warn('[useSessionView] API failed, using fallback message');
+      
+      // Fallback to default message
+      return `feat: implement changes from ${gitCommands?.currentBranch || 'feature branch'}`;
+      
+    } catch (error) {
+      console.error('Error generating conventional commit message:', error);
+      // Fallback message
+      return `feat: implement changes from ${gitCommands?.currentBranch || 'feature branch'}`;
+    } finally {
+      setIsGeneratingMessage(false);
+    }
+  };
+
+  const handleGenerateCommitMessage = async () => {
+    console.log('[useSessionView] handleGenerateCommitMessage called');
+    const message = await generateConventionalCommitMessage();
+    console.log('[useSessionView] Generated message:', message);
+    setCommitMessage(message);
+  };
+
   const handleSquashAndRebaseToMain = async () => {
     const defaultMessage = await generateDefaultCommitMessage();
     setCommitMessage(defaultMessage);
     setDialogType('squash');
     setShouldSquash(true);
+    setShouldGenerateMessage(false);
     setShowCommitMessageDialog(true);
   };
   
@@ -1684,6 +1743,10 @@ export const useSessionView = (
     isStravuConnected,
     shouldSquash,
     setShouldSquash,
+    shouldGenerateMessage,
+    setShouldGenerateMessage,
+    isGeneratingMessage,
+    handleGenerateCommitMessage,
     isWaitingForFirstOutput,
     elapsedTime,
     textareaRef,

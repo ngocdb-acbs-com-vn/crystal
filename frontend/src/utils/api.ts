@@ -217,6 +217,16 @@ export class API {
       return window.electronAPI.sessions.getGitCommands(sessionId);
     },
 
+    async getGitDiff(sessionId: string) {
+      if (!isElectron()) throw new Error('Electron API not available');
+      return window.electronAPI.invoke('sessions:git-diff', sessionId);
+    },
+
+    async generateCommitMessage(sessionId: string, diff: string, prompts: string[]) {
+      if (!isElectron()) throw new Error('Electron API not available');
+      return window.electronAPI.invoke('sessions:generate-commit-message', { sessionId, diff, prompts });
+    },
+
     // Git pull/push operations
     async gitPull(sessionId: string) {
       if (!isElectron()) throw new Error('Electron API not available');

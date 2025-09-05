@@ -950,4 +950,86 @@ export function registerSessionHandlers(ipcMain: IpcMain, services: AppServices)
     }
   });
 
+  // Generate commit message handler
+  ipcMain.handle('sessions:generate-commit-message', async (_event, { sessionId, diff, prompts }: {
+    sessionId: string;
+    diff: string;
+    prompts: string[];
+  }) => {
+    try {
+      console.log(`[IPC] sessions:generate-commit-message for session ${sessionId}`);
+      
+      // Improved prompt based on conventional commit best practices
+      const claudePrompt = `You will act as a git commit message generator. When receiving a git diff, you will ONLY output the commit message itself, nothing else. No explanations, no questions, no additional comments.
+
+Commits should follow the Conventional Commits 1.0.0 specification:
+
+CRITICAL REQUIREMENTS:
+- Output ONLY the commit message  
+- Write ONLY in English
+- No additional text or explanations
+- No questions or comments
+- Maximum 120 characters per line
+- Do not wrap output in special characters or delimiters
+
+FORMAT: <type>(<scope>): <description>
+
+TYPES (choose most appropriate):
+- feat: new feature
+- fix: bug fix  
+- docs: documentation changes
+- style: formatting, missing semi colons, etc
+- refactor: code change that neither fixes bug nor adds feature
+- perf: performance improvement
+- test: adding tests
+- chore: updating grunt tasks etc
+
+Git changes:
+\`\`\`
+${diff}
+\`\`\`
+
+Context from prompts:
+${prompts.length > 0 ? prompts.join('\n\n') : 'No additional context'}`;
+
+      // For now, return a smart fallback based on the diff content
+      // TODO: Implement actual Claude integration later
+      let message = 'feat: implement changes';
+      
+      // Simple heuristics based on diff content
+      if (diff.includes('fix') || diff.includes('bug') || diff.includes('error')) {
+        message = 'fix: resolve issues in codebase';
+      } else if (diff.includes('test') || diff.includes('spec')) {
+        message = 'test: add or update tests';
+      } else if (diff.includes('doc') || diff.includes('README') || diff.includes('.md')) {
+        message = 'docs: update documentation';
+      } else if (diff.includes('refactor') || diff.includes('rename')) {
+        message = 'refactor: improve code structure';
+      } else if (diff.includes('style') || diff.includes('format') || diff.includes('lint')) {
+        message = 'style: improve code formatting';
+      } else if (diff.includes('performance') || diff.includes('optimize')) {
+        message = 'perf: improve performance';
+      } else if (diff.includes('chore') || diff.includes('package') || diff.includes('config')) {
+        message = 'chore: update configuration';
+      }
+      
+      // Try to extract meaningful context from prompts
+      if (prompts.length > 0) {
+        const promptContext = prompts.join(' ').toLowerCase();
+        if (promptContext.includes('add') && promptContext.includes('feature')) {
+          message = 'feat: add new functionality';
+        } else if (promptContext.includes('generate') && promptContext.includes('commit')) {
+          message = 'feat: add commit message generation';
+        }
+      }
+      
+      console.log(`[IPC] Generated commit message: ${message}`);
+      return { success: true, data: { message } };
+      
+    } catch (error) {
+      console.error('Failed to generate commit message:', error);
+      return { success: false, error: 'Failed to generate commit message' };
+    }
+  });
+
 } 

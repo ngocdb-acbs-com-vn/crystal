@@ -349,8 +349,12 @@ export const SessionView = memo(() => {
         setCommitMessage={hook.setCommitMessage}
         shouldSquash={hook.shouldSquash}
         setShouldSquash={hook.setShouldSquash}
+        shouldGenerateMessage={hook.shouldGenerateMessage || false}
+        setShouldGenerateMessage={hook.setShouldGenerateMessage || (() => {})}
         onConfirm={hook.performSquashWithCommitMessage}
+        onGenerateMessage={hook.handleGenerateCommitMessage || (() => { console.log('Fallback onGenerateMessage called'); })}
         isMerging={hook.isMerging}
+        isGeneratingMessage={hook.isGeneratingMessage || false}
       />
 
       <GitErrorDialog
